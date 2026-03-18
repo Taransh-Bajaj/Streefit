@@ -90,73 +90,95 @@
 </div>
 
 <script>
-    // Load existing trips from storage on startup
-    window.onload = displayTrips;
+ // Load existing trips on startup
+window.onload = displayTrips;
 
-    function showCalculator() {
-        document.getElementById('homePage').classList.remove('active');
-        document.getElementById('calcPage').classList.add('active');
-        // Reset inputs
-        document.getElementById('tripName').value = "";
-        document.getElementById('tableBody').innerHTML = '<tr><td><input type="text" class="exp-name" placeholder="Hotel"></td><td><input type="number" class="exp-price" placeholder="0"></td></tr>';
-        document.getElementById('calcResults').style.display = 'none';
-    }
+function showCalculator() {
+    document.getElementById('homePage').classList.remove('active');
+    document.getElementById('calcPage').classList.add('active');
+    document.getElementById('tripName').value = "";
+    document.getElementById('tableBody').innerHTML = '<tr><td><input type="text" class="exp-name" placeholder="Hotel"></td><td><input type="number" class="exp-price" placeholder="0"></td></tr>';
+    document.getElementById('calcResults').style.display = 'none';
+}
 
-    function showHome() {
-        document.getElementById('calcPage').classList.remove('active');
-        document.getElementById('homePage').classList.add('active');
-        displayTrips();
-    }
+function showHome() {
+    document.getElementById('calcPage').classList.remove('active');
+    document.getElementById('homePage').classList.add('active');
+    displayTrips();
+}
 
-    function addRow() {
-        const row = `<tr>
-            <td><input type="text" class="exp-name"></td>
-            <td><input type="number" class="exp-price" placeholder="0"></td>
-        </tr>`;
-        document.getElementById('tableBody').insertAdjacentHTML('beforeend', row);
-    }
+function addRow() {
+    const row = `<tr><td><input type="text" class="exp-name"></td><td><input type="number" class="exp-price" placeholder="0"></td></tr>`;
+    document.getElementById('tableBody').insertAdjacentHTML('beforeend', row);
+}
 
-    function saveAndCalculate() {
-        const name = document.getElementById('tripName').value || "Untitled Trip";
-        const people = parseInt(document.getElementById('numPeople').value) || 1;
-        const charge = parseFloat(document.getElementById('chargePerPerson').value) || 0;
-        
-        let costPerPerson = 0;
-        const prices = document.querySelectorAll('.exp-price');
-        prices.forEach(p => costPerPerson += (parseFloat(p.value) || 0));
+function saveAndCalculate() {
+    const name = document.getElementById('tripName').value || "Untitled Trip";
+    const people = parseInt(document.getElementById('numPeople').value) || 1;
+    const charge = parseFloat(document.getElementById('chargePerPerson').value) || 0;
+    
+    let costPerPerson = 0;
+    const prices = document.querySelectorAll('.exp-price');
+    prices.forEach(p => costPerPerson += (parseFloat(p.value) || 0));
 
-        const profitPP = charge - costPerPerson;
-        const totalProfit = profitPP * people;
+    const profitPP = charge - costPerPerson;
+    const totalProfit = profitPP * people;
 
-        // Display results
-        document.getElementById('outCostPP').innerText = "Rs. " + costPerPerson.toLocaleString();
-        document.getElementById('outProfitPP').innerText = "Rs. " + profitPP.toLocaleString();
-        document.getElementById('outTotalProfit').innerText = "Rs. " + totalProfit.toLocaleString();
-        document.getElementById('calcResults').style.display = 'block';
+    // Save to LocalStorage
+    const tripData = { id: Date.now(), name, totalProfit, date: new Date().toLocaleDateString() };
+    let trips = JSON.parse(localStorage.getItem('myTrips')) || [];
+    trips.push(tripData);
+    localStorage.setItem('myTrips', JSON.stringify(trips));
 
-        // Save to LocalStorage
-        const tripData = { name, totalProfit, date: new Date().toLocaleDateString() };
-        let trips = JSON.parse(localStorage.getItem('myTrips')) || [];
-        trips.push(tripData);
-        localStorage.setItem('myTrips', JSON.stringify(trips));
-    }
+    // Show Results
+    document.getElementById('outCostPP').innerText = "Rs. " + costPerPerson.toLocaleString();
+    document.getElementById('outProfitPP').innerText = "Rs. " + profitPP.toLocaleString();
+    document.getElementById('outTotalProfit').innerText = "Rs. " + totalProfit.toLocaleString();
+    document.getElementById('calcResults').style.display = 'block';
+}
 
-    function displayTrips() {
-        const list = document.getElementById('tripList');
-        const trips = JSON.parse(localStorage.getItem('myTrips')) || [];
-        list.innerHTML = trips.length ? "" : "<p style='text-align:center; color:#666;'>No trips saved yet.</p>";
-        
-        trips.reverse().forEach(trip => {
-            const item = `<div class="trip-item">
-                <div>
-                    <strong>${trip.name}</strong><br>
-                    <small style="color:#888">${trip.date}</small>
-                </div>
-                <div style="color:var(--neon)">Rs. ${trip.totalProfit.toLocaleString()}</div>
-            </div>`;
-            list.innerHTML += item;
-        });
-    }
+function deleteTrip(id) {
+    let trips = JSON.parse(localStorage.getItem('myTrips')) || [];
+    trips = trips.filter(t => t.id !== id);
+    localStorage.setItem('myTrips', JSON.stringify(trips));
+    displayTrips();
+}
+
+function exportToExcel() {
+    let trips = JSON.parse(localStorage.getItem('myTrips')) || [];
+    if (trips.length === 0) return alert("No trips to export!");
+
+    let csvContent = "data:text/csv;charset=utf-8,Trip Name,Date,Total Profit (Rs.)\n";
+    trips.forEach(t => {
+        csvContent += `${t.name},${t.date},${t.totalProfit}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "My_Trips_Report.csv");
+    document.body.appendChild(link);
+    link.click();
+}
+
+function displayTrips() {
+    const list = document.getElementById('tripList');
+    const trips = JSON.parse(localStorage.getItem('myTrips')) || [];
+    
+    // Add Export Button if there are trips
+    let html = trips.length ? `<button class="btn btn-add-row" onclick="exportToExcel()" style="width:100%">Download All to Excel</button>` : "<p style='text-align:center; color:#666;'>No trips saved yet.</p>";
+    
+    trips.slice().reverse().forEach(trip => {
+        html += `<div class="trip-item">
+            <div><strong>${trip.name}</strong><br><small style="color:#888">${trip.date}</small></div>
+            <div style="display:flex; align-items:center;">
+                <span style="color:var(--neon); margin-right:15px;">Rs. ${trip.totalProfit.toLocaleString()}</span>
+                <button onclick="deleteTrip(${trip.id})" style="background:none; border:none; color:#ff4444; cursor:pointer; font-size:1.2em;">&times;</button>
+            </div>
+        </div>`;
+    });
+    list.innerHTML = html;
+}
 </script>
 
 </body>
