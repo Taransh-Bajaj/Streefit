@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trip Profit Manager</title>
+    <style>
+        :root { --neon: #00ff88; --bg: #121212; --card: #1e1e1e; --text: #ffffff; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 600px; }
+        
+        /* Pages */
+        .page { display: none; background: var(--card); padding: 25px; border-radius: 15px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .active { display: block; }
+
+        h1, h2 { color: var(--neon); text-align: center; }
+        
+        /* Home Page Styles */
+        .trip-list { margin: 20px 0; }
+        .trip-item { background: #2a2a2a; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--neon); }
+        
+        /* Table Styles */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #444; }
+        input { background: #333; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; width: 90%; }
+
+        /* Buttons */
+        .btn { cursor: pointer; border: none; border-radius: 6px; font-weight: bold; padding: 12px; transition: 0.3s; }
+        .btn-main { background: var(--neon); color: #000; width: 100%; font-size: 1.1em; }
+        .btn-add-row { background: #444; color: white; margin-bottom: 20px; }
+        .btn-back { background: transparent; color: #888; border: 1px solid #444; margin-bottom: 10px; }
+        
+        .results { background: #00ff881a; padding: 15px; border-radius: 10px; border: 1px solid var(--neon); }
+        .res-line { display: flex; justify-content: space-between; margin: 5px 0; }
+        .profit-text { color: var(--neon); font-size: 1.3em; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div id="homePage" class="page active">
+        <h1>Trip Manager</h1>
+        <button class="btn btn-main" onclick="showCalculator()">+ ADD TRIP</button>
+        <div class="trip-list" id="tripList">
+            </div>
+    </div>
+
+    <div id="calcPage" class="page">
+        <button class="btn btn-back" onclick="showHome()">← Back</button>
+        <h2>Trip Details</h2>
+        
+        <label>Trip Name:</label>
+        <input type="text" id="tripName" placeholder="e.g. Manali Summer Trip" style="margin-bottom: 20px; width: 100%;">
+
+        <table id="costTable">
+            <thead>
+                <tr>
+                    <th>Expense Name</th>
+                    <th>Price (Per Person)</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr>
+                    <td><input type="text" class="exp-name" placeholder="Hotel"></td>
+                    <td><input type="number" class="exp-price" placeholder="0"></td>
+                </tr>
+            </tbody>
+        </table>
+        <button class="btn btn-add-row" onclick="addRow()">+ Add Row</button>
+
+        <div class="input-group">
+            <label>Number of People:</label>
+            <input type="number" id="numPeople" value="1" style="width: 100%; margin-bottom: 15px;">
+        </div>
+        <div class="input-group">
+            <label>Charging Each Person (Rs.):</label>
+            <input type="number" id="chargePerPerson" placeholder="0" style="width: 100%; margin-bottom: 20px;">
+        </div>
+
+        <button class="btn btn-main" onclick="saveAndCalculate()">Calculate & Save</button>
+
+        <div id="calcResults" class="results" style="display:none; margin-top:20px;">
+            <div class="res-line"><span>Total Cost per Person:</span> <span id="outCostPP"></span></div>
+            <div class="res-line"><span>Profit per Person:</span> <span id="outProfitPP"></span></div>
+            <hr>
+            <div class="res-line"><span>TOTAL TRIP PROFIT:</span> <span id="outTotalProfit" class="profit-text"></span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Load existing trips from storage on startup
+    window.onload = displayTrips;
+
+    function showCalculator() {
+        document.getElementById('homePage').classList.remove('active');
+        document.getElementById('calcPage').classList.add('active');
+        // Reset inputs
+        document.getElementById('tripName').value = "";
+        document.getElementById('tableBody').innerHTML = '<tr><td><input type="text" class="exp-name" placeholder="Hotel"></td><td><input type="number" class="exp-price" placeholder="0"></td></tr>';
+        document.getElementById('calcResults').style.display = 'none';
+    }
+
+    function showHome() {
+        document.getElementById('calcPage').classList.remove('active');
+        document.getElementById('homePage').classList.add('active');
+        displayTrips();
+    }
+
+    function addRow() {
+        const row = `<tr>
+            <td><input type="text" class="exp-name"></td>
+            <td><input type="number" class="exp-price" placeholder="0"></td>
+        </tr>`;
+        document.getElementById('tableBody').insertAdjacentHTML('beforeend', row);
+    }
+
+    function saveAndCalculate() {
+        const name = document.getElementById('tripName').value || "Untitled Trip";
+        const people = parseInt(document.getElementById('numPeople').value) || 1;
+        const charge = parseFloat(document.getElementById('chargePerPerson').value) || 0;
+        
+        let costPerPerson = 0;
+        const prices = document.querySelectorAll('.exp-price');
+        prices.forEach(p => costPerPerson += (parseFloat(p.value) || 0));
+
+        const profitPP = charge - costPerPerson;
+        const totalProfit = profitPP * people;
+
+        // Display results
+        document.getElementById('outCostPP').innerText = "Rs. " + costPerPerson.toLocaleString();
+        document.getElementById('outProfitPP').innerText = "Rs. " + profitPP.toLocaleString();
+        document.getElementById('outTotalProfit').innerText = "Rs. " + totalProfit.toLocaleString();
+        document.getElementById('calcResults').style.display = 'block';
+
+        // Save to LocalStorage
+        const tripData = { name, totalProfit, date: new Date().toLocaleDateString() };
+        let trips = JSON.parse(localStorage.getItem('myTrips')) || [];
+        trips.push(tripData);
+        localStorage.setItem('myTrips', JSON.stringify(trips));
+    }
+
+    function displayTrips() {
+        const list = document.getElementById('tripList');
+        const trips = JSON.parse(localStorage.getItem('myTrips')) || [];
+        list.innerHTML = trips.length ? "" : "<p style='text-align:center; color:#666;'>No trips saved yet.</p>";
+        
+        trips.reverse().forEach(trip => {
+            const item = `<div class="trip-item">
+                <div>
+                    <strong>${trip.name}</strong><br>
+                    <small style="color:#888">${trip.date}</small>
+                </div>
+                <div style="color:var(--neon)">Rs. ${trip.totalProfit.toLocaleString()}</div>
+            </div>`;
+            list.innerHTML += item;
+        });
+    }
+</script>
+
+</body>
+</html>
